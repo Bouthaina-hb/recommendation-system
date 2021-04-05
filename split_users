@@ -1,0 +1,59 @@
+# Sampling 
+
+import numpy as np
+import pandas as pd
+
+ratings_data = pd.read_csv("ratings.csv")
+print(ratings_data.head())
+
+tags_data = pd.read_csv("tags.csv")
+
+movie_names = pd.read_csv("movies.csv")
+movie_names.head()
+
+movie_data = pd.merge(ratings_data, movie_names, on='movieId')
+#print(movie_data)
+
+df = pd.DataFrame(movie_data.groupby('userId')['rating'].mean())
+df['rating_counts'] = pd.DataFrame(movie_data.groupby('userId')['rating'].count())
+#print(df)
+
+
+users = pd.DataFrame(df.loc[df['rating_counts']>=100,:])
+
+final_users = pd.DataFrame(users.sample(n = 1000))
+final_users['userId'] = final_users.index
+
+#print(final_users.sort_index(axis = 0))
+
+
+df_r=ratings_data.join(final_users,on='userId', how='left', lsuffix='_left', rsuffix='_right')
+df_t=tags_data.join(final_users,on='userId', how='left', lsuffix='_left', rsuffix='_right')
+df_m=movie_data.join(final_users,on='userId', how='left', lsuffix='_left', rsuffix='_right')
+
+df_r = df_r.dropna()
+df_t = df_t.dropna()
+df_m = df_m.dropna()
+
+unique_df = pd.DataFrame(df_m['movieId'].unique(), columns = ['movieId']) 
+#print(unique_df.sort_values(by=['movieId']))
+
+
+df_movie=pd.merge(movie_names, unique_df, on='movieId')
+
+#print(df_movie)
+
+df_new_r=df_r.drop(['rating_counts', 'userId_right', 'rating_right'], axis=1)
+df_new_r.rename(columns={'userId_left':'userId',
+                       'rating_left':'rating'}, 
+                       inplace=True)
+print(df_new_r)
+
+df_new_t=df_t.drop(['rating_counts', 'userId_right', 'rating'], axis=1)
+df_new_t.rename(columns={'userId_left':'userId'}, 
+                       inplace=True)
+#print(df_new_t)
+
+df_new_r.to_csv('ratings_new.csv', index = False)
+df_new_t.to_csv('tags_new.csv', index = False)
+df_movie.to_csv('movies_new.csv', index = False)
